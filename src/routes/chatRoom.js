@@ -193,4 +193,22 @@ router.delete('/chatroom/exit', async (req, res) =>{
     }
 })
 
+router.post('/chatroom/join', async (req, res) => {
+    const { roomId, userId } = req.body;
+
+    if (!roomId || !userId) {
+        return res.send(400).send('roomId or userId are missing');
+    }
+
+    try{
+        const joinRoomQuery = `INSERT INTO room_members (room_id, user_id, joined_at) VALUES (?, ?, ?)`;
+        await client.execute(joinRoomQuery, [roomId, userId, new Date()], {prepare: true});
+
+        res.status(200).send({message: `User ${userId} joined the room ${roomId}`});
+    } catch (err){
+        console.error(err);
+        res.status(500).send('Failed to join the room');
+    }
+})
+
 module.exports = router;
