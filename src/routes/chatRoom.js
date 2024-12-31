@@ -193,6 +193,43 @@ router.delete('/chatroom/exit', async (req, res) =>{
     }
 })
 
+/**
+ * @swagger
+ * /api/chatroom/join:
+ *   post:
+ *     summary: "채팅방 초대"
+ *     description: "특정 채팅방에 사용자 초대"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               roomId:
+ *                 type: string
+ *                 description: "참여할 채팅방의 ID"
+ *                 example: "e5a37b13-634e-47ec-9a70-2bdf1d1b28f5"
+ *               userId:
+ *                 type: string
+ *                 description: "참여할 사용자의 ID"
+ *                 example: "user123"
+ *     responses:
+ *       200:
+ *         description: "사용자가 채팅방에 성공적으로 참여함"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User user123 joined the room e5a37b13-634e-47ec-9a70-2bdf1d1b28f5"
+ *       400:
+ *         description: "roomId 또는 userId가 요청에서 누락"
+ *       500:
+ *         description: "서버 내부 오류로 인해 채팅방 참여 실패"
+ */
 router.post('/chatroom/join', async (req, res) => {
     const { roomId, userId } = req.body;
 
