@@ -3,7 +3,7 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./utils/swaggerConfig');
+const swaggerSpec = require('./config/swaggerConfig');
 const eventHandlers = require('./utils/events');
 
 // 라우트 파일 가지고 오기

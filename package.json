@@ -13,6 +13,7 @@
     "cassandra-driver": "^4.7.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.1",
+    "kafkajs": "^2.2.4",
     "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"

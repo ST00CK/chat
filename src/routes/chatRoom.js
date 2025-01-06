@@ -1,7 +1,7 @@
 const express = require('express');
 const cassandra = require('cassandra-driver');
 const router = express.Router();
-const client = require('../utils/scyllaDBConfig');
+const client = require('../config/scyllaDBConfig');
 
 /**
  * @swagger
