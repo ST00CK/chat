@@ -12,7 +12,7 @@ const chatRoutes = require('./routes/chatRoom');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { path: '/chat/socket.io' });
 
 // 정적 파일 제공
 app.use(express.static(path.join(__dirname, '../public')));
