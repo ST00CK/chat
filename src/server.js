@@ -27,8 +27,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Swagger UI 라우트 추가
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerSpec));
+app.use('/chat/api-docs', swaggerUi.serve);
+app.get('/chat/api-docs', swaggerUi.setup(swaggerSpec));
 
 // API 라우트 등록
 app.use('/api', chatRoutes);
@@ -43,5 +43,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`서버 실행 중: http://localhost:${PORT}`);
-    console.log(`Swagger API 문서: http://localhost:${PORT}/api-docs`);
+    console.log(`Swagger API 문서: http://localhost:${PORT}/chat/api-docs`);
 });
