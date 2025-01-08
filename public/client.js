@@ -1,4 +1,4 @@
-const socket = io({path: '/chat/socket.io',});
+const socket = io();
 
 // 메시지 송신
 document.querySelector('#chatForm').addEventListener('submit', (e) => {
