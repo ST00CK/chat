@@ -1,6 +1,6 @@
 const kafka = require('../config/kafkaConfig');
 
-const consumer = kafka.consumer({ groupId: ''}); //Consumer 생성
+const consumer = kafka.consumer({ groupId: 'chat_messages'}); //Consumer 생성
 
 const consumeMessageFromKafka = async (topic, handleMessage) => {
     try{

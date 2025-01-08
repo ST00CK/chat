@@ -21,16 +21,10 @@ const socketHandler = (io) => {
         })
 
         // Kafka 에서 메시지 소비 및 브로드캐스트
-        consumeMessageFromKafka('single', (roomId, message) => {
+        consumeMessageFromKafka('chat_messages', (roomId, message) => {
             io.to(roomId).emit('newMessage', message);
         }).catch((err) => {
             console.error('Error in SocketHandler_consumeMessageFromKafka_single: ', err);
-        })
-
-        consumeMessageFromKafka('group', (roomId, message) => {
-            io.to(roomId).emit('newMessage', message);
-        }).catch((err) => {
-            console.error('Error in SocketHandler_consumeMessageFromKafka_group: ', err);
         })
 
         // 연결 해제
