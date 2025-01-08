@@ -4,6 +4,7 @@ package chat;
 
 service ChatService {
   rpc SendNotification (SendNotificationRequest) returns (SendNotificationResponse);
+  rpc StreamNotifications(stream NotificationRequest) returns (stream NotificationResponse);
 }
 
 message SendNotificationRequest {
@@ -13,4 +14,14 @@ message SendNotificationRequest {
 
 message SendNotificationResponse {
   string status = 1;   // 처리 상태 (success, failure)
+}
+
+message NotificationRequest {
+  string user_id = 1;
+  string status = 2;
+}
+
+message NotificationResponse {
+  string user_id = 1;
+  string update = 2;
 }
