@@ -27,8 +27,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Swagger UI 라우트 추가
-app.use('/chat/api-docs', swaggerUi.serve);
-app.get('/chat/api-docs', swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerSpec));
 
 // API 라우트 등록
 app.use('/api', chatRoutes);
