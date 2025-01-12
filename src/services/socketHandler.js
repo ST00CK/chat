@@ -6,17 +6,25 @@ const socketHandler = (io) => {
         console.log('New user connected:', socket.id);
 
         //방 입장
-        socket.on('joinRoom', ({ roomId }) => {
+        socket.on('joinRoom', (data) => {
+            if (typeof data === 'string') {
+                data = JSON.parse(data); // 문자열을 JSON 객체로 변환
+            }
+            const { roomId } = data;
+            console.log(data);
             socket.join(roomId);
-            console.log(`User ${socket.id} joined room ${roomId}`);
+            console.log(`User ${socket.id} joined room ${data.roomId}`);
         })
 
         // 클라이언트에서 메시지 전송
-        socket.on('sendMessage', async ({ roomId, message, type }) => {
-            const topic = type === 'single' ? 'single' : 'group';
-
+        socket.on('sendMessage', async (data) => {
+            if (typeof data === 'string') {
+                data = JSON.parse(data);
+            }
+            const { roomId, message } = data;
+            const topic = 'chat_messages'
             // kafka 로 메시지 전송
-            await sendMessageToKafka(topic, roomId, { userId: socket.id, message});
+            await sendMessageToKafka(topic, roomId, message, socket.id);
             console.log(`Message from ${socket.id} sent to room ${roomId}`);
         })
 

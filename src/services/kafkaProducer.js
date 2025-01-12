@@ -1,4 +1,6 @@
-const kafka = require('../config/kafkaConfig'); //Kafka 설정 가지고 오기
+const { v4: uuidv4 } = require('uuid'); // UUID 생성 라이브러리
+const createKafkaInstance = require('../config/kafkaConfig');
+const kafka = createKafkaInstance('chat-service-producer'); // Kafka 객체 생성
 
 const producer = kafka.producer();
 
@@ -12,38 +14,40 @@ const connectProducer = async () => {
     }
 };
 
-// Kafka 메시지를 전송하는 함수
-const sendMessageToKafka = async (topic, roomId, message) => {
-    try{
-        //메시지 전송
-        await producer.send({
-            topic : topic,
-            messages: [
-                {
-                    key: roomId, // 파티션 키 : 메시지가 특정 파티션으로 전달되도록 설정
-                    value: JSON.stringify({ roomId, ...message})},
-            ],
-        })
-        console.log('Success to send message kafkaProducer');
-    } catch (err){
-        console.error('Error in kafkaProducer: ', err);
+let retryCount = 0;
+const maxRetries = 5; // 최대 재시도 횟수
 
-        //재시도 로직
-        setTimeout(async () => {
-            try{
-                await producer.send({
-                    topic : topic,
-                    messages: [
-                        {
-                            key: roomId, // 파티션 키 : 메시지가 특정 파티션으로 전달되도록 설정
-                            value: JSON.stringify({ roomId, ...message})},
-                    ],
-                })
-            } catch (retryErr) {
-                console.error('Error in kafkaProducer_retried: ', retryErr);
+// Kafka 메시지를 전송하는 함수
+const sendMessageToKafka = async (topic, roomId, context, userId) => {
+    const payload = {
+        message_id: uuidv4(),
+        room_id: roomId,
+        user_id: userId,
+        context: context,
+        timestamp: new Date().toISOString(), // 현재 시간
+    };
+
+    const trySendMessage = async () => {
+        try {
+            await producer.send({
+                topic: topic,
+                messages: [{ key: roomId, value: JSON.stringify(payload) }],
+            });
+            console.log('Message sent to Kafka:', payload);
+        } catch (err) {
+            console.error('Error in kafkaProducer:', err);
+
+            if (retryCount < maxRetries) {
+                retryCount++;
+                console.log(`Retrying (${retryCount}/${maxRetries})...`);
+                setTimeout(trySendMessage, 1000); // 1초 대기 후 재시도
+            } else {
+                console.error('Max retry limit reached. Message failed:', payload);
             }
-        }, 1000); // 1초후 재시도
-    }
+        }
+    };
+
+    await trySendMessage();
 }
 
 // 애플리케이션 종료 시 Kafka Producer 연결 해제
