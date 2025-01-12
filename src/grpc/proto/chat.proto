@@ -8,8 +8,9 @@ service ChatService {
 }
 
 message SendNotificationRequest {
-  string user_id = 1;  // 수신자 ID
-  string message = 2;  // 알림 내용
+  string room_id = 1;  // 채팅방 ID
+  string user_id = 2;  // 수신자 ID
+  string message = 3;  // 알림 내용
 }
 
 message SendNotificationResponse {
