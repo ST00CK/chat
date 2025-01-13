@@ -24,7 +24,7 @@ const sendMessageToKafka = async (topic, roomId, context, userId) => {
         room_id: roomId,
         user_id: userId,
         context: context,
-        timestamp: new Date().toISOString(), // 현재 시간
+        send_at: new Date().toISOString(), // 현재 시간
     };
 
     const trySendMessage = async () => {
