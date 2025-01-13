@@ -16,15 +16,25 @@ const socketHandler = (io) => {
             console.log(`User ${socket.id} joined room ${data.roomId}`);
         })
 
+        //방 나가기
+        socket.on('leaveRoom', (data) => {
+            if (typeof data === 'string') {
+                data = JSON.parse(data);
+            }
+            const { roomId } = data;
+            socket.leave(roomId);
+            console.log(`User ${socket.id} left room ${roomId}`);
+        });
+
         // 클라이언트에서 메시지 전송
         socket.on('sendMessage', async (data) => {
             if (typeof data === 'string') {
                 data = JSON.parse(data);
             }
-            const { roomId, message } = data;
+            const { roomId, context } = data;
             const topic = 'chat_messages'
             // kafka 로 메시지 전송
-            await sendMessageToKafka(topic, roomId, message, socket.id);
+            await sendMessageToKafka(topic, roomId, context, socket.id);
             console.log(`Message from ${socket.id} sent to room ${roomId}`);
         })
 
