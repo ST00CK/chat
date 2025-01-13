@@ -6,7 +6,7 @@ const cors = require('cors');
 const { connectProducer } = require('./services/kafkaProducer');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swaggerConfig');
-const eventHandlers = require('./utils/events');
+//const eventHandlers = require('./utils/events');
 
 // 라우트 파일 가지고 오기
 const indexRoutes = require('./routes/index');
