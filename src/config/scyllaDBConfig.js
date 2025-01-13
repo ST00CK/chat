@@ -1,5 +1,5 @@
+require ('dotenv').config({ path: '../.env'}); // .env 파일 로드
 const cassandra = require('cassandra-driver');
-require ('dotenv').config(); // .env 파일 로드
 
 const contactPoints = [process.env.SCYLLA_CONTACT_POINTS]; // Cassandra 드라이버의 contactPoints 는 IP 주소와 포트를 배열형식으로 입력 받아야 한다.
 const localDataCenter = process.env.SCYLLA_LOCAL_DATACENTER;

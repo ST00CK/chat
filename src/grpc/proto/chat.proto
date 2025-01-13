@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package chat;
+
+service ChatService {
+  rpc SendNotification (SendNotificationRequest) returns (SendNotificationResponse);
+  rpc StreamNotifications(stream NotificationRequest) returns (stream NotificationResponse);
+}
+
+message SendNotificationRequest {
+  string room_id = 1;  // 채팅방 ID
+  string user_id = 2;  // 수신자 ID
+  string message = 3;  // 알림 내용
+}
+
+message SendNotificationResponse {
+  string status = 1;   // 처리 상태 (success, failure)
+}
+
+message NotificationRequest {
+  string user_id = 1;
+  string status = 2;
+}
+
+message NotificationResponse {
+  string user_id = 1;
+  string update = 2;
+}

@@ -1,7 +1,7 @@
 const express = require('express');
 const cassandra = require('cassandra-driver');
 const router = express.Router();
-const client = require('../utils/scyllaDBConfig');
+const client = require('../config/scyllaDBConfig');
 
 /**
  * @swagger
@@ -190,6 +190,116 @@ router.delete('/chatroom/exit', async (req, res) =>{
     } catch (err){
         console.error(err);
         res.status(500).send('Failed to exit the room');
+    }
+})
+
+/**
+ * @swagger
+ * /api/chatroom/join:
+ *   post:
+ *     summary: "채팅방 초대"
+ *     description: "특정 채팅방에 사용자 초대"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               roomId:
+ *                 type: string
+ *                 description: "참여할 채팅방의 ID"
+ *                 example: "e5a37b13-634e-47ec-9a70-2bdf1d1b28f5"
+ *               userId:
+ *                 type: string
+ *                 description: "참여할 사용자의 ID"
+ *                 example: "user123"
+ *     responses:
+ *       200:
+ *         description: "사용자가 채팅방에 성공적으로 참여함"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User user123 joined the room e5a37b13-634e-47ec-9a70-2bdf1d1b28f5"
+ *       400:
+ *         description: "roomId 또는 userId가 요청에서 누락"
+ *       500:
+ *         description: "서버 내부 오류로 인해 채팅방 참여 실패"
+ */
+router.post('/chatroom/invite', async (req, res) => {
+    const { roomId, userId } = req.body;
+
+    if (!roomId || !userId) {
+        return res.send(400).send('roomId or userId are missing');
+    }
+
+    try{
+        const joinRoomQuery = `INSERT INTO room_members (room_id, user_id, joined_at) VALUES (?, ?, ?)`;
+        await client.execute(joinRoomQuery, [roomId, userId, new Date()], {prepare: true});
+
+        res.status(200).send({message: `User ${userId} joined the room ${roomId}`});
+    } catch (err){
+        console.error(err);
+        res.status(500).send('Failed to join the room');
+    }
+})
+
+/**
+ * @swagger
+ * /chatroom/update:
+ *   patch:
+ *     summary: "채팅방 이름 업데이트"
+ *     description: "특정 채팅방의 이름 업데이트"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               roomId:
+ *                 type: string
+ *                 description: "업데이트할 채팅방의 ID"
+ *                 example: "e5a37b13-634e-47ec-9a70-2bdf1d1b28f5"
+ *               roomName:
+ *                 type: string
+ *                 description: "새로운 채팅방 이름"
+ *                 example: "Study Group"
+ *     responses:
+ *       200:
+ *         description: "채팅방 이름이 성공적으로 업데이트됨"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Room e5a37b13-634e-47ec-9a70-2bdf1d1b28f5 updated successfully"
+ *       400:
+ *         description: "roomId 또는 roomName 이 누락되었거나 유효하지 않음"
+ *       500:
+ *         description: "서버 내부 오류로 인해 채팅방 업데이트 실패"
+ */
+router.patch('/chatroom/update', async (req, res) => {
+    const { roomId, roomName } = req.body;
+
+    if (!roomId || roomName.trim().length === 0) {
+        return res.send(400).send('roomId is missing');
+    }
+
+    try{
+        const updateRoomQuery = `UPDATE chat_rooms SET room_name = ? WHERE room_id = ?`;
+        await  client.execute(updateRoomQuery, [roomName, roomId], {prepare: true});
+
+        res.status(200).send({message: `Room ${roomId} updated successfully`});
+    } catch (err){
+        console.error(err);
+        res.status(500).send('Failed to update the room');
     }
 })
 
