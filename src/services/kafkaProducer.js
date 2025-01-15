@@ -31,7 +31,7 @@ const sendMessageToKafka = async (topic, roomId, context, userId) => {
         try {
             await producer.send({
                 topic: topic,
-                messages: [{ key: roomId, value: JSON.stringify(payload) }],
+                messages: [{ key: JSON.stringify({ room_id: roomId}), value: JSON.stringify(payload) }],
             });
             console.log('Message sent to Kafka:', payload);
         } catch (err) {
