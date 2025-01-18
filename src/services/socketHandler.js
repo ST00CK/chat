@@ -1,9 +1,19 @@
+const { sendNotification } = require('../grpc/client/chatClient')
+const { getUsersInRoom } = require('./CassandraDataQuery');
 const { sendMessageToKafka } = require('./kafkaProducer');
 const { consumeMessageFromKafka } = require('./KafkaConsumer');
+
+const userSocketMap = new Map(); // User ID와 Socket ID 매핑 관리
 
 const socketHandler = (io) => {
     io.on('connection', (socket) => {
         console.log('New user connected:', socket.id);
+
+        // User ID 등록
+        socket.on('registerUser', (userId) => {
+            userSocketMap.set(userId, socket.id); // User ID와 Socket ID 매핑
+            console.log(`User ${userId} mapped to socket ${socket.id}`);
+        });
 
         //방 입장
         socket.on('joinRoom', (data) => {
@@ -35,7 +45,13 @@ const socketHandler = (io) => {
             const topic = 'chat_messages'
             // kafka 로 메시지 전송
             await sendMessageToKafka(topic, roomId, context, socket.id);
-            console.log(`Message from ${socket.id} sent to room ${roomId}`);
+
+            const usersInRoom = await getUsersInRoom(roomId); // 방에 속한 유저 목록
+            const offlineUsers = usersInRoom.filter(userId => !io.sockets.sockets.get(userId)); // 연결되지 않은 유저 필터링
+
+            await Promise.all(
+                offlineUsers.map(userId => sendNotification(userId,context, roomId))
+            );
         })
 
         // Kafka 에서 메시지 소비 및 브로드캐스트
@@ -45,9 +61,15 @@ const socketHandler = (io) => {
             console.error('Error in SocketHandler_consumeMessageFromKafka_single: ', err);
         })
 
-        // 연결 해제
+        // 연결 해제 처리
         socket.on('disconnect', () => {
-            console.log('User disconnected:', socket.id);
+            for (const [userId, socketId] of userSocketMap.entries()) {
+                if (socketId === socket.id) {
+                    userSocketMap.delete(userId); // 연결 해제 시 매핑 제거
+                    console.log(`User ${userId} disconnected and removed from map`);
+                    break;
+                }
+            }
         });
     })
 }
