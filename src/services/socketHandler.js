@@ -47,11 +47,12 @@ const socketHandler = (io) => {
             await sendMessageToKafka(topic, roomId, context, socket.id);
 
             const usersInRoom = await getUsersInRoom(roomId); // 방에 속한 유저 목록
-            // const offlineUsers = usersInRoom.filter(userId => !io.sockets.sockets.get(userId)); // 연결되지 않은 유저 필터링
-            //
-            // await Promise.all(
-            //     offlineUsers.map(userId => sendNotification(userId,context, roomId))
-            // );
+            console.log("usersInRoom --------> ", usersInRoom);
+            const offlineUsers = usersInRoom.filter(userId => !io.sockets.sockets.get(userId)); // 연결되지 않은 유저 필터링
+            console.log("offlineUser --------> ", offlineUsers)
+            await Promise.all(
+                offlineUsers.map(userId => sendNotification(userId,context, roomId))
+            );
         })
 
         // Kafka 에서 메시지 소비 및 브로드캐스트
