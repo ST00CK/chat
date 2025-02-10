@@ -51,7 +51,7 @@ const socketHandler = (io) => {
             const offlineUsers = usersInRoom.filter(userId => !io.sockets.sockets.get(userId)); // 연결되지 않은 유저 필터링
             console.log("offlineUser --------> ", offlineUsers)
             await Promise.all(
-                offlineUsers.map(userId => sendNotification(userId,context, roomId))
+                offlineUsers.map(userId => sendNotification(userId, context, roomId))
             );
         })
 

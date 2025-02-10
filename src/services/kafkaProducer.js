@@ -1,8 +1,11 @@
 const { v4: uuidv4 } = require('uuid'); // UUID 생성 라이브러리
 const createKafkaInstance = require('../config/kafkaConfig');
+const { Partitioners } = require("kafkajs");
 const kafka = createKafkaInstance('chat-service-producer'); // Kafka 객체 생성
 
-const producer = kafka.producer();
+const producer = kafka.producer({
+    createPartitioner: Partitioners.LegacyPartitioner
+});
 
 // Producer 연결을 유지하는 함수
 const connectProducer = async () => {
