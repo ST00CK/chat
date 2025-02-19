@@ -29,7 +29,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Express CORS 설정
 app.use(cors({
     origin: '*', // 모든 도메인 허용 (테스트용)
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type'],
 }));
 const socketHandler = require('./services/socketHandler');
