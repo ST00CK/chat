@@ -7,18 +7,18 @@ const client = require('../config/scyllaDBConfig');
  * @swagger
  * /api/chatroom/list:
  *   get:
- *     summary: "채팅방 리스트"
- *     description: "유저가 속해있는 채팅방 리스트 출력"
+ *     summary: "채팅방 리스트 조회"
+ *     description: "유저가 속해있는 채팅방 리스트를 가져옵니다."
  *     parameters:
  *       - in: query
  *         name: userId
  *         required: true
  *         schema:
  *           type: string
- *         description: 가져올 채팅방 사용자의 ID
+ *         description: 채팅방 목록을 가져올 사용자의 ID
  *     responses:
  *       200:
- *         description: "서버 응답 성공"
+ *         description: "채팅방 리스트 조회 성공"
  *         content:
  *           application/json:
  *             schema:
@@ -29,10 +29,29 @@ const client = require('../config/scyllaDBConfig');
  *                   room_id:
  *                     type: string
  *                     example: "00f6b02e-818c-4284-8c3b-55c81ca058b3"
+ *                   room_name:
+ *                     type: string
+ *                     example: "정, 김 님의 채팅방"
  *       400:
- *         description: "user_id 가 존재하지 않습니다."
+ *         description: "잘못된 요청 - userId가 누락됨"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "userID is missing"
  *       500:
- *         description: "서버 에러"
+ *         description: "서버 내부 오류"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Error fetching chat rooms"
  */
 router.get('/chatroom/list', async (req, res) => {
     const { userId } = req.query;
