@@ -3,7 +3,7 @@ const { Uuid } = require('cassandra-driver').types;
 
 async function getUsersInRoom(roomId) {
     console.log("-0-0-0-0-0-0-0-", typeof roomId);
-    const query = `SELECT DISTINCT user_id FROM chat_messages WHERE room_id = ?`;
+    const query = `SELECT user_id FROM my_keyspace.chat_messages WHERE room_id = ?`;
     try{
         const normalizedRoomId = typeof roomId === 'string' ? Uuid.fromString(roomId) : roomId ;
         const result = await client.execute(query, [normalizedRoomId]);

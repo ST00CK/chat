@@ -8,8 +8,8 @@ service ChatService {
 }
 
 message SendNotificationRequest {
-  string room_id = 1;  // 채팅방 ID
-  string user_id = 2;  // 수신자 ID
+  string roomId = 1;  // 채팅방 ID
+  string userId = 2;  // 수신자 ID
   string message = 3;  // 알림 내용
 }
 
@@ -18,11 +18,14 @@ message SendNotificationResponse {
 }
 
 message NotificationRequest {
-  string user_id = 1;
-  string status = 2;
+  string roomId = 1;
+  string userId = 2;
+  string message = 3;
 }
 
 message NotificationResponse {
-  string user_id = 1;
-  string update = 2;
+  string roomId = 1;
+  string userId = 2;
+  string message = 3;
+  string timestamp = 4;
 }

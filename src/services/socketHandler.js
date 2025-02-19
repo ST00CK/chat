@@ -49,9 +49,20 @@ const socketHandler = (io) => {
             const usersInRoom = await getUsersInRoom(roomId); // 방에 속한 유저 목록
             console.log("usersInRoom --------> ", usersInRoom);
             const offlineUsers = usersInRoom.filter(userId => !io.sockets.sockets.get(userId)); // 연결되지 않은 유저 필터링
-            console.log("offlineUser --------> ", offlineUsers)
+            console.log("offlineUser --------> ", offlineUsers);
+
+            if (offlineUsers.length === 0) {
+                console.log("No offline users to notify.");
+                return;
+            }
             await Promise.all(
-                offlineUsers.map(userId => sendNotification(userId, context, roomId))
+                offlineUsers.map(async (userId) => {
+                    try{
+                        await sendNotification(roomId, userId, context);
+                    } catch (error) {
+                        console.error("Error in socketHandler_sendMessage: ", error);
+                    }
+                })
             );
         })
 
