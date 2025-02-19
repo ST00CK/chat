@@ -57,7 +57,7 @@ router.get('/chatroom/list', async (req, res) => {
     const { userId } = req.query;
 
     if ((!userId)) {
-        return res.status(400).send({ error : 'userID is missing'});
+        return res.status(400).json({ error : 'userID is missing'});
     }
 
     try{
@@ -136,21 +136,29 @@ router.post('/chatroom/create', async (req, res) => {
     let { roomName, userId } = req.body;
     const roomId = cassandra.types.Uuid.random();
     const timeStamp = new Date();
+    const failedUsers = [];
 
     if (!roomName || roomName.trim().length === 0) {
-        roomName = `${userId}'s room`;
+        roomName = `${userId[0]}'s room`;
     }
 
     try{
         const createRoomQuery = `INSERT INTO chat_rooms (room_id, room_name, created_at) VALUES (?, ?, ?)`;
         await client.execute(createRoomQuery, [roomId, roomName, timeStamp], {prepare: true});
 
-        const userInsertPromises = userId.map(user =>{
-            const addMemberQuery = `INSERT INTO room_members (room_id, user_id, joined_at) VALUES (?, ?, ?)`;
-            return client.execute(addMemberQuery, [roomId, user, timeStamp], {prepare: true});
-        });
+        await Promise.all(userId.map(async (user) => {
+            try {
+                const addMemberQuery = `INSERT INTO room_members (room_id, user_id, joined_at) VALUES (?, ?, ?)`;
+                await client.execute(addMemberQuery, [roomId, user, timeStamp], {prepare: true});
+            } catch (err) {
+                console.error(`Failed to add user ${user}:`, err);
+                failedUsers.push(user);
+            }
+        }));
 
-        await Promise.all(userInsertPromises);
+        if (failedUsers.length > 0){
+            console.warn(`Some users failed to be added:`, failedUsers);
+        }
 
         res.status(201).send({message: 'Chat room created successfully', roomId, roomName, userId});
     } catch (err) {
@@ -200,7 +208,7 @@ router.delete('/chatroom/exit', async (req, res) =>{
     const { roomId, userId } = req.body;
 
     if (!roomId || !userId) {
-        return res.send(400).send('roomId or userId are missing');
+        return res.status(400).json({ error: 'roomId or userId are missing'});
     }
 
     try{
@@ -210,7 +218,7 @@ router.delete('/chatroom/exit', async (req, res) =>{
         const checkMemberQuery = `SELECT COUNT(*) FROM room_members WHERE room_id = ?`;
         const members = await client.execute(checkMemberQuery, [roomId], {prepare: true});
 
-        if (members.rows[0].count === '0'){
+        if (parseInt(members.rows[0].count) === 0){
             const deleteRoomQuery = `DELETE FROM chat_rooms WHERE room_id = ?`;
             await client.execute(deleteRoomQuery, [roomId], {prepare: true});
         }
@@ -263,7 +271,7 @@ router.post('/chatroom/invite', async (req, res) => {
     const { roomId, userId } = req.body;
 
     if (!roomId || !userId) {
-        return res.send(400).send('roomId or userId are missing');
+        return res.status(400).json({ error: 'roomId or userId are missing' });
     }
 
     try{
@@ -279,7 +287,7 @@ router.post('/chatroom/invite', async (req, res) => {
 
 /**
  * @swagger
- * /chatroom/update:
+ * /api/chatroom/update:
  *   patch:
  *     summary: "채팅방 이름 업데이트"
  *     description: "특정 채팅방의 이름 업데이트"
@@ -318,7 +326,7 @@ router.patch('/chatroom/update', async (req, res) => {
     const { roomId, roomName } = req.body;
 
     if (!roomId || roomName.trim().length === 0) {
-        return res.send(400).send('roomId is missing');
+        return res.status(400).json({error: 'roomId is missing'});
     }
 
     try{
@@ -329,6 +337,84 @@ router.patch('/chatroom/update', async (req, res) => {
     } catch (err){
         console.error(err);
         res.status(500).send('Failed to update the room');
+    }
+})
+
+/**
+ * @swagger
+ * /api/chatroom/log:
+ *   get:
+ *     summary: "채팅방 로그 조회"
+ *     description: "지정된 room_id에 대한 채팅 로그를 조회합니다."
+ *     parameters:
+ *       - in: query
+ *         name: room_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: "조회할 채팅방의 ID"
+ *     responses:
+ *       200:
+ *         description: "채팅 로그 조회 성공"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   message_id:
+ *                     type: string
+ *                     example: "c3f5a8a4-5d76-45d7-931b-4e0f41bf8e92"
+ *                   room_id:
+ *                     type: string
+ *                     example: "00f6b02e-818c-4284-8c3b-55c81ca058b3"
+ *                   user_id:
+ *                     type: string
+ *                     example: "user123"
+ *                   message:
+ *                     type: string
+ *                     example: "안녕하세요!"
+ *                   timestamp:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2024-02-19T12:34:56.789Z"
+ *       400:
+ *         description: "잘못된 요청 - room_id가 누락되었거나 유효하지 않음"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "roomId is missing"
+ *       500:
+ *         description: "서버 내부 오류"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Failed to get the room log"
+ */
+router.get('/chatroom/log', async (req, res) => {
+    const { roomId } = req.query;
+
+    if(!roomId || typeof roomId !== 'string') {
+        return res.status(400).json({error: 'roomId is missing'});
+    }
+
+    try{
+        const chatLogQuery = `SELECT * FROM my_keyspace.chat_messages WHERE room_id = ?`;
+        const chatLog = await client.execute(chatLogQuery, [roomId], {prepare: true});
+
+        res.status(200).json(chatLog.rows);
+    }catch (err){
+        console.error(err);
+        res.status(500).send('Failed to get the room log');
     }
 })
 
