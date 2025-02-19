@@ -19,12 +19,23 @@ const GRPC_SERVER_HOST = process.env.GRPC_SERVER_HOST;
 const GRPC_SERVER_PORT = process.env.GRPC_SERVER_PORT;
 const grpcServerAddress = `${GRPC_SERVER_HOST}:${GRPC_SERVER_PORT}`;
 
-// gRPC 클라이언트 생성
-const client = new chatProto.ChatService(grpcServerAddress, grpc.credentials.createInsecure());
+console.log(`📡 Connecting to gRPC server at ${grpcServerAddress}`);
 
-function sendNotification(userId, message, roomId) {
+// gRPC 클라이언트 생성
+const client = new chatProto.ChatService(grpcServerAddress, grpc.credentials.createSsl());
+
+client.waitForReady(Date.now() + 5000, (err) => {
+    if (err) {
+        console.error("❌ gRPC 서버에 연결할 수 없습니다:", err);
+    } else {
+        console.log("✅ gRPC 서버 연결 성공:", grpcServerAddress);
+    }
+});
+
+
+function sendNotification(userId, roomId, context) {
     return new Promise((resolve, reject) => {
-        const notificationRequest = { user_id: userId, message, room_id: roomId };
+        const notificationRequest = { roomId: roomId, userId: userId, message: context };
         client.SendNotification(notificationRequest, (err, response) => {
             if (err) {
                 console.error(`Error sending notification to ${userId}:`, err);
