@@ -17,7 +17,7 @@ const chatProto = grpc.loadPackageDefinition(packageDefinition).chat;
 // gRPC 서버 정보
 const GRPC_SERVER_HOST = process.env.GRPC_SERVER_HOST;
 const GRPC_SERVER_PORT = process.env.GRPC_SERVER_PORT;
-const USE_TLS = process.env.GRPC_USE_TLS;
+const USE_TLS = process.env.GRPC_USE_TLS === 'true'; // .env 에서 false 로 값을 주어도 문자열로 저장되기 때문에 boolean 값으로 설정 할 수 있도로 변경해야 한다.
 
 const grpcServerAddress = `${GRPC_SERVER_HOST}:${GRPC_SERVER_PORT}`;
 
