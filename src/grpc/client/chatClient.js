@@ -17,12 +17,18 @@ const chatProto = grpc.loadPackageDefinition(packageDefinition).chat;
 // gRPC 서버 정보
 const GRPC_SERVER_HOST = process.env.GRPC_SERVER_HOST;
 const GRPC_SERVER_PORT = process.env.GRPC_SERVER_PORT;
+const USE_TLS = process.env.GRPC_USE_TLS;
+
 const grpcServerAddress = `${GRPC_SERVER_HOST}:${GRPC_SERVER_PORT}`;
 
 console.log(`📡 Connecting to gRPC server at ${grpcServerAddress}`);
+console.log(`🔒 TLS Enabled: ${USE_TLS}`);
+
+// TLS 사용 여부에 따라 gRPC 클라이언트 설정 변경
+const credentials = USE_TLS ? grpc.credentials.createSsl() : grpc.credentials.createInsecure();
 
 // gRPC 클라이언트 생성
-const client = new chatProto.ChatService(grpcServerAddress, grpc.credentials.createSsl());
+const client = new chatProto.ChatService(grpcServerAddress, credentials);
 
 client.waitForReady(Date.now() + 5000, (err) => {
     if (err) {
