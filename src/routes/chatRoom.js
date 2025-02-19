@@ -42,9 +42,19 @@ router.get('/chatroom/list', async (req, res) => {
     }
 
     try{
-        const query = 'SELECT room_id FROM room_members WHERE user_id = ?';
-        const result = await client.execute(query, [userId], {prepare: true});
-        res.status(200).json(result.rows);
+        const query1 = 'SELECT room_id FROM room_members WHERE user_id = ?';
+        const result1 = await client.execute(query1, [userId], {prepare: true});
+
+        if (result1.rows.length === 0){
+            return res.status(200).json([]);
+        }
+
+        const roomIds = result1.rows.map(row => row.room_id);
+
+        const query2 = `SELECT room_id, room_name FROM chat_rooms WHERE room_id IN (${roomIds.map(() => '?').join(',')})`;
+        const result2 = await client.execute(query2, roomIds, {prepare: true});
+
+        res.status(200).json(result2.rows);
     } catch (err) {
         res.status(500).send('Error fetching chat rooms');
     }
