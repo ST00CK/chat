@@ -232,7 +232,7 @@ router.delete('/chatroom/exit', async (req, res) =>{
 
 /**
  * @swagger
- * /api/chatroom/join:
+ * /api/chatroom/invite:
  *   post:
  *     summary: "채팅방 초대"
  *     description: "특정 채팅방에 사용자 초대"
