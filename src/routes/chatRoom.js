@@ -418,4 +418,69 @@ router.get('/chatroom/log', async (req, res) => {
     }
 })
 
+/**
+ * @swagger
+ * /api/chatroom/members:
+ *   get:
+ *     summary: "채팅방 멤버 조회"
+ *     description: "지정된 room_id에 속한 멤버 목록을 조회합니다."
+ *     parameters:
+ *       - in: query
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: "조회할 채팅방의 ID"
+ *     responses:
+ *       200:
+ *         description: "채팅방 멤버 목록 조회 성공"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   user_id:
+ *                     type: string
+ *                     example: "user123"
+ *       400:
+ *         description: "잘못된 요청 - roomId가 누락되었거나 유효하지 않음"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "roomId is missing"
+ *       500:
+ *         description: "서버 내부 오류"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Failed to get the room members"
+ */
+router.get('/chatroom/members', async (req, res) => {
+    const { roomId } = req.query;
+
+    if(!roomId || typeof roomId !== 'string') {
+        return res.status(400).json({error: 'roomId is missing'});
+    }
+
+    try{
+        const membersQuery = `SELECT user_id FROM my_keyspace.room_members WHERE room_id = ?`;
+        const members = await client.execute(membersQuery, [roomId], {prepare: true});
+
+        res.status(200).json(members.rows);
+    }catch (err){
+        console.error(err);
+        res.status(500).send('Failed to get the room members');
+    }
+})
+
 module.exports = router;
