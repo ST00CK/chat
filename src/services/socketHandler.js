@@ -14,12 +14,6 @@ const socketHandler = (io) => {
         if (!isKafkaInitialized) {
             console.log("Kafka Consumer initializing...");
             isKafkaInitialized = true;
-
-            consumeMessageFromKafka('chat_messages', (roomId, message) => {
-                io.to(roomId).emit('newMessage', message);
-            }).catch((err) => {
-                console.error("Kafka Consumer initialization failed:", err);
-            })
         }
 
         // 클라이언트가 연결할 때 자동으로 userId 등록
