@@ -1,25 +1,17 @@
 const { sendNotification } = require('../grpc/client/chatClient')
-const { getUsersInRoom } = require('./CassandraDataQuery');
+const { getUsersInRoom, getRoomName } = require('./CassandraDataQuery');
 const { sendMessageToKafka } = require('./kafkaProducer');
 const { consumeMessageFromKafka } = require('./KafkaConsumer');
 
-const userSocketMap = new Map(); // User ID와 Socket ID 매핑 관리
-const roomUserMap = new Map(); // Room ID 와 User ID 매핑 관리
 let isKafkaInitialized = false;
 
-const socketHandler = (io) => {
+const socketHandler = (io, redis) => {
     io.on('connection', (socket) => {
-        console.log('New user connected:', socket.id);
+        const socketId = socket.id;
 
         if (!isKafkaInitialized) {
             console.log("Kafka Consumer initializing...");
             isKafkaInitialized = true;
-
-            consumeMessageFromKafka('chat_messages', (roomId, message) => {
-                io.to(roomId).emit('newMessage', message);
-            }).catch((err) => {
-                console.error("Kafka Consumer initialization failed:", err);
-            })
         }
 
         // 클라이언트가 연결할 때 자동으로 userId 등록
@@ -29,78 +21,73 @@ const socketHandler = (io) => {
             return;
         }
 
-        if (!userSocketMap.has(userId)) {
-            userSocketMap.set(userId, new Set());
-        }
-        userSocketMap.get(userId).add(socket.id);
+        // Redis 에 유저-ID와 Socket-ID 매핑
+        redis.sadd(`user:${userId}:sockets`, socketId);
+
         socket.data.userId = userId;
 
-        console.log(`💡User ${userId} registered with socket ${socket.id}`);
+        console.log(`💡 User ${userId} registered with socket ${socketId}`);
 
         //방 입장
-        socket.on('joinRoom', (data) => {
+        socket.on('joinRoom', async (data) => {
             if (typeof data === 'string') {
                 data = JSON.parse(data); // 문자열을 JSON 객체로 변환
             }
             const { roomId } = data;
             const userId = socket.data.userId;
+            const socketId = socket.id;
 
             socket.join(roomId);
 
-            if (!roomUserMap.has(roomId)) {
-                roomUserMap.set(roomId, new Map());
-            }
+            await redis.sadd(`room:${roomId}:users`, userId); // 방에 속한 유저 관리
+            await redis.sadd(`user:${userId}:rooms`, roomId); // 유저가 속한 방 관리
+            await redis.sadd(`socket:${socketId}:rooms`, roomId); // 소켓에 속한 방 관리
 
-            const roomUsers = roomUserMap.get(roomId);
-
-            if (!roomUsers.has(userId)) {
-                roomUsers.set(userId, new Set());
-            }
-            roomUsers.get(userId).add(socket.id);
-
-            console.log(`💡User ${userId} joined room ${roomId}`);
-            console.log("💡", io.sockets.adapter.rooms.get(roomId));
+            console.log(`💡 User ${userId} joined room ${roomId}`);
+            console.log("💡 ", io.sockets.adapter.rooms.get(roomId));
         })
 
         //방 나가기
-        socket.on('leaveRoom', (data) => {
+        socket.on('leaveRoom', async (data) => {
             if (typeof data === 'string') {
                 data = JSON.parse(data);
             }
             const { roomId } = data;
             const userId = socket.data.userId;
+            const socketId = socket.id;
 
             socket.leave(roomId);
-            console.log(`💡User ${userId} left room ${roomId}`);
+            console.log(`💡 User ${userId} left room ${roomId}`);
 
-            if (roomUserMap.has(roomId)) {
-                const roomUsers = roomUserMap.get(roomId);
+            await redis.srem(`socket:${socketId}:rooms`, roomId);
+            const remainingSockets = await redis.smembers(`user:${userId}:sockets`);
+            let isUserStillInRoom = false;
 
-                if (!(roomUsers instanceof Map)) {
-                    console.error(`roomUsers for ${roomId} is not a Map!`);
-                    return;
-                }
-
-                // userId 가 아닌 socket.id 를 제거해야 함.
-                if (roomUsers.has(userId)) {
-                    const userSockets = roomUsers.get(userId);
-
-                    // 특정 socket.id만 제거
-                    userSockets.delete(socket.id);
-                    console.log(`💡Removed socket ${socket.id} from user ${userId} in room ${roomId}`);
-
-                    // 모든 socket.id 가 삭제되면 userId 삭제
-                    if (userSockets.size === 0) {
-                        roomUsers.delete(userId);
-                        console.log(`💡User ${userId} completely removed from room ${roomId}`);
-                    }
-
-                    // 방에 아무도 없으면 room 자체 삭제
-                    if (roomUsers.size === 0) {
-                        roomUserMap.delete(roomId);
-                        console.log(`💡Room ${roomId} deleted as no users are left.`);
+            for (const otherSocketId of remainingSockets) {
+                if (otherSocketId !== socketId) {
+                    const roomsForOtherSocket = await redis.smembers(`socket:${otherSocketId}:rooms`);
+                    if (roomsForOtherSocket.includes(roomId)) {
+                        isUserStillInRoom = true;
+                        break;
                     }
                 }
+            }
+
+            if (!isUserStillInRoom) {
+                await redis.srem(`user:${userId}:rooms`, roomId);
+                await redis.srem(`room:${roomId}:users`, userId);
+            }
+
+            const remainingUsers = await redis.smembers(`room:${roomId}:users`);
+            if (remainingUsers.length === 0) {
+                await redis.del(`room:${roomId}:users`);
+                console.log(`💡 Room ${roomId} completely removed`);
+            }
+
+            const remainingRoomsForSocket = await redis.smembers(`socket:${socketId}:rooms`);
+            if (remainingRoomsForSocket.length === 0) {
+                await redis.del(`socket:${socketId}:rooms`);
+                console.log(`💡 socket:${socketId}:rooms deleted`);
             }
         });
 
@@ -118,28 +105,27 @@ const socketHandler = (io) => {
             await sendMessageToKafka(topic, roomId, context, userId);
 
             const usersInRoom = await getUsersInRoom(roomId); // 방에 속한 유저 목록
-            console.log("💡usersInRoom --------> ", usersInRoom);
+            console.log("💡 usersInRoom --------> ", usersInRoom);
+            const usersInRoomName = await getRoomName(roomId);
 
-            const offlineUsers = usersInRoom.filter(userId => {
-                const isOnline = userSocketMap.has(userId);
-                const isInRoom = roomUserMap.has(roomId) && roomUserMap.get(roomId).has(userId);
+            const offlineUsers = await Promise.all(usersInRoom.map(async (userId) => {
+                const isOnline = await redis.exists(`user:${userId}:sockets`);
+                const isInRoom = await redis.sismember(`room:${roomId}:users`, userId);
+                console.log(`💡 Checking user ${userId}: isOnline=${isOnline}, isInRoom=${isInRoom}`);
+                return (!isOnline || !isInRoom) ? userId : null;
+            })).then(results => results.filter(user => user !== null));
 
-                console.log(`💡Checking user ${userId}: isOnline=${isOnline}, isInRoom=${isInRoom}`);
-
-                return !isOnline || !isInRoom; // 방에 없거나 완전히 오프라인이면 offlineUsers 로 간주
-            });
-
-            console.log("💡offlineUser --------> ", offlineUsers);
+            console.log("💡 offlineUser --------> ", offlineUsers);
 
             if (offlineUsers.length === 0) {
-                console.log("💡No offline users to notify.");
+                console.log("💡 No offline users to notify.");
                 return;
             }
             await Promise.all(
                 offlineUsers.map(async (userId) => {
                     try{
-                        await sendNotification(roomId, userId, context);
-                        console.log(`💡Notification sent to user ${userId} in room ${roomId}`);
+                        await sendNotification(roomId, userId, context, usersInRoomName);
+                        console.log(`💡 Notification sent to user ${userId} in room ${roomId}`);
                     } catch (error) {
                         console.error("Error in socketHandler_sendMessage: ", error);
                     }
@@ -155,37 +141,30 @@ const socketHandler = (io) => {
         })
 
         // 연결 해제 처리
-        socket.on('disconnect', () => {
+        socket.on('disconnect', async () => {
             const userId = socket.data.userId;
-            console.log(`Socket ${socket.id} for user ${userId} disconnected`);
+            const socketId = socket.id;
+            console.log(`Socket ${socketId} for user ${userId} disconnected`);
 
-            // 모든 소켓이 사라지면 userId 자체도 삭제
-            for (const [roomId, roomUsers] of roomUserMap.entries()) {
-                if (roomUsers.has(userId)) {
-                    const userSockets = roomUsers.get(userId);
-                    userSockets.delete(socket.id);
+            await redis.srem(`user:${userId}:sockets`, socketId);
 
-                    if (userSockets.size === 0) {
-                        roomUsers.delete(userId);
-                        console.log(`User ${userId} fully removed from room ${roomId}`);
-                    }
+            const rooms = await redis.smembers(`socket:${socketId}:rooms`);
+            for (const roomId of rooms) {
+                await redis.srem(`room:${roomId}:users`, userId);
 
-                    if (roomUsers.size === 0) {
-                        roomUserMap.delete(roomId);
-                        console.log(`Room ${roomId} deleted as no users are left.`);
-                    }
+                const roomSize = await redis.scard(`room:${roomId}:users`);
+                if (roomSize === 0) {
+                    await redis.del(`room:${roomId}:users`);
                 }
             }
 
-            if (userSocketMap.has(userId)) {
-                const userSockets = userSocketMap.get(userId);
-                userSockets.delete(socket.id);
-                console.log(`💡Removed socket ${socket.id} from userSocketMap for user ${userId}`);
+            await redis.del(`socket:${socketId}:rooms`);
 
-                if (userSockets.size === 0) {
-                    userSocketMap.delete(userId);
-                    console.log(`💡User ${userId} completely removed from userSocketMap`);
-                }
+            const remainingSocketsCount = await redis.scard(`user:${userId}:sockets`);
+            if (remainingSocketsCount === 0) {
+                await redis.del(`user:${userId}:sockets`);
+                await redis.del(`user:${userId}:rooms`);
+                console.log(`💡 User ${userId} completely removed`);
             }
         });
     })

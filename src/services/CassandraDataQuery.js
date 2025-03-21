@@ -13,4 +13,16 @@ async function getUsersInRoom(roomId) {
     }
 }
 
-module.exports = { getUsersInRoom };
+async function getRoomName(roomId) {
+    const query = `SELECT room_name FROM my_keyspace.chat_rooms WHERE room_id = ?`;
+    try{
+        const normalizedRoomId = typeof roomId === 'string' ? Uuid.fromString(roomId) : roomId ;
+        const result = await client.execute(query, [normalizedRoomId]);
+        return result.rows[0].room_name;
+    } catch (err) {
+        console.error('Error in CassandraDataQuery_getRoomName: ', err);
+        return [];
+    }
+}
+
+module.exports = { getUsersInRoom, getRoomName };

@@ -19,6 +19,10 @@ const GRPC_SERVER_HOST = process.env.GRPC_SERVER_HOST;
 const GRPC_SERVER_PORT = process.env.GRPC_SERVER_PORT;
 const USE_TLS = process.env.GRPC_USE_TLS === 'true'; // .env 에서 false 로 값을 주어도 문자열로 저장되기 때문에 boolean 값으로 설정 할 수 있도로 변경해야 한다.
 
+// const GRPC_SERVER_HOST = `localhost`;
+// const GRPC_SERVER_PORT = `9091`;
+// const USE_TLS = process.env.GRPC_USE_TLS === 'false';
+
 const grpcServerAddress = `${GRPC_SERVER_HOST}:${GRPC_SERVER_PORT}`;
 
 console.log(`📡 Connecting to gRPC server at ${grpcServerAddress}`);
@@ -39,10 +43,11 @@ client.waitForReady(Date.now() + 5000, (err) => {
 });
 
 
-function sendNotification(userId, roomId, context) {
+function sendNotification(roomId, userId, context, usersInRoomName) {
+    console.log(`------------------- ${userId}, ${roomId}, ${context}`);
     return new Promise((resolve, reject) => {
-        const notificationRequest = { roomId: roomId, userId: userId, message: context };
-        client.StreamNotifications(notificationRequest, (err, response) => {
+        const notificationRequest = { roomId: roomId, userId: userId, message: context , roomName: usersInRoomName};
+        client.SendNotification(notificationRequest, (err, response) => {
             if (err) {
                 console.error(`Error sending notification to ${userId}:`, err);
                 reject(err);
@@ -57,38 +62,3 @@ function sendNotification(userId, roomId, context) {
 module.exports = {
     sendNotification,
 };
-
-// // 알림 전송 테스트
-// function sendNotification() {
-//     client.SendNotification({ user_id: 'A', message: 'Hello, A!' }, (err, response) => {
-//         if (err) {
-//             console.error('Error sending notification:', err);
-//         } else {
-//             console.log('Notification response:', response.status);
-//         }
-//     });
-// }
-//
-// // 스트리밍 테스트
-// function streamNotifications() {
-//     const call = client.StreamNotifications();
-//
-//     call.write({ user_id: 'A', status: 'connected' });
-//
-//     setTimeout(() => {
-//         call.write({ user_id: 'A', status: 'disconnected' });
-//         call.end();
-//     }, 5000);
-//
-//     call.on('data', (response) => {
-//         console.log('Stream response:', response);
-//     });
-//
-//     call.on('end', () => {
-//         console.log('Stream ended');
-//     });
-// }
-//
-// // 테스트 실행
-// sendNotification();
-// streamNotifications();

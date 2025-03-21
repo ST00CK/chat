@@ -11,21 +11,24 @@ message SendNotificationRequest {
   string roomId = 1;  // 채팅방 ID
   string userId = 2;  // 수신자 ID
   string message = 3;  // 알림 내용
+  string roomName = 4;
 }
 
 message SendNotificationResponse {
-  string status = 1;   // 처리 상태 (success, failure)
+  int32 status = 1;   // 처리 상태 (success, failure)
 }
 
 message NotificationRequest {
   string roomId = 1;
   string userId = 2;
   string message = 3;
+  string roomName = 4;
 }
 
 message NotificationResponse {
   string roomId = 1;
   string userId = 2;
   string message = 3;
-  string timestamp = 4;
+  string roomName = 4;
+  string timestamp = 5;
 }
