@@ -8,7 +8,6 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swaggerConfig');
 const socketHandler = require('./services/socketHandler');
 const createRedisInstance = require('./config/redisConfig');
-//const eventHandlers = require('./utils/events');
 
 // 라우트 파일 가지고 오기
 const indexRoutes = require('./routes/index');
@@ -64,7 +63,7 @@ connectProducer().catch((err) => {
 });
 
 // 서버 시작
-const PORT = process.env.PORT || 9999;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`서버 실행 중: http://localhost:${PORT}`);
     console.log(`Swagger API 문서: http://localhost:${PORT}/chat/api-docs`);
