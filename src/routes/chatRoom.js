@@ -344,43 +344,68 @@ router.patch('/chatroom/update', async (req, res) => {
  * @swagger
  * /api/chatroom/log:
  *   get:
- *     summary: "채팅방 로그 조회"
- *     description: "지정된 room_id에 대한 채팅 로그를 조회합니다."
+ *     summary: "채팅방 로그 조회 (커서 기반 페이지네이션)"
+ *     description: |
+ *       지정된 room_id에 대한 채팅 로그를 조회합니다.
+ *       커서 기반 페이지네이션을 지원하며, 최초 요청 시에는 cursor 없이 최신 메시지를 가져오고,
+ *       이후 요청 시에는 마지막 메시지의 send_at 값을 cursor 로 넘겨 이전 메시지를 조회합니다.
  *     parameters:
  *       - in: query
- *         name: room_id
+ *         name: roomId
  *         required: true
  *         schema:
  *           type: string
- *         description: "조회할 채팅방의 ID"
+ *         description: "조회할 채팅방의 ID (UUID 형식)"
+ *       - in: query
+ *         name: cursor
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: "이전 페이지의 마지막 메시지 시간 (ISO 8601 형식)"
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 30
+ *         description: "가져올 메시지 개수 (기본값 30)"
  *     responses:
  *       200:
  *         description: "채팅 로그 조회 성공"
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   message_id:
- *                     type: string
- *                     example: "c3f5a8a4-5d76-45d7-931b-4e0f41bf8e92"
- *                   room_id:
- *                     type: string
- *                     example: "00f6b02e-818c-4284-8c3b-55c81ca058b3"
- *                   user_id:
- *                     type: string
- *                     example: "user123"
- *                   message:
- *                     type: string
- *                     example: "안녕하세요!"
- *                   timestamp:
- *                     type: string
- *                     format: date-time
- *                     example: "2024-02-19T12:34:56.789Z"
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       message_id:
+ *                         type: string
+ *                         example: "c3f5a8a4-5d76-45d7-931b-4e0f41bf8e92"
+ *                       room_id:
+ *                         type: string
+ *                         example: "00f6b02e-818c-4284-8c3b-55c81ca058b3"
+ *                       user_id:
+ *                         type: string
+ *                         example: "user123"
+ *                       context:
+ *                         type: string
+ *                         example: "안녕하세요!"
+ *                       send_at:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2024-02-19T12:34:56.789Z"
+ *                 nextCursor:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                   example: "2024-02-19T12:34:56.789Z"
  *       400:
- *         description: "잘못된 요청 - room_id가 누락되었거나 유효하지 않음"
+ *         description: "잘못된 요청 - roomId가 누락되었거나 유효하지 않음"
  *         content:
  *           application/json:
  *             schema:
@@ -400,18 +425,24 @@ router.patch('/chatroom/update', async (req, res) => {
  *                   type: string
  *                   example: "Failed to get the room log"
  */
+
 router.get('/chatroom/log', async (req, res) => {
-    const { roomId } = req.query;
+    const { roomId, cursor, limit } = req.query;
 
     if(!roomId || typeof roomId !== 'string') {
         return res.status(400).json({error: 'roomId is missing'});
     }
 
     try{
-        const chatLogQuery = `SELECT * FROM my_keyspace.chat_messages WHERE room_id = ?`;
-        const chatLog = await client.execute(chatLogQuery, [roomId], {prepare: true});
+        const cursorTimestamp = cursor ? new Date(cursor) : new Date();
 
-        res.status(200).json(chatLog.rows);
+        const chatLogQuery = `SELECT * FROM my_keyspace.chat_messages WHERE room_id = ? AND send_at < ? ORDER BY send_at DESC LIMIT ?`;
+        const chatLog = await client.execute(chatLogQuery, [roomId, cursorTimestamp, limit], {prepare: true});
+
+        const messages = chatLog.rows;
+        const nextCursor = messages.length > 0 ? messages[messages.length -1].send_at : null;
+
+        res.status(200).json({messages, nextCursor});
     }catch (err){
         console.error(err);
         res.status(500).send('Failed to get the room log');
