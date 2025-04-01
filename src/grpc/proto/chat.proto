@@ -4,7 +4,6 @@ package chat;
 
 service ChatService {
   rpc SendNotification (SendNotificationRequest) returns (SendNotificationResponse);
-  rpc StreamNotifications(stream NotificationRequest) returns (stream NotificationResponse);
 }
 
 message SendNotificationRequest {
