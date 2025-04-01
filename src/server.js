@@ -63,7 +63,7 @@ connectProducer().catch((err) => {
 });
 
 // 서버 시작
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.LOCALPORT;
 server.listen(PORT, () => {
     console.log(`서버 실행 중: http://localhost:${PORT}`);
     console.log(`Swagger API 문서: http://localhost:${PORT}/chat/api-docs`);
