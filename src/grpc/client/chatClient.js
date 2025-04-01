@@ -43,16 +43,15 @@ client.waitForReady(Date.now() + 5000, (err) => {
 });
 
 
-function sendNotification(roomId, userId, context, usersInRoomName) {
-    console.log(`------------------- ${userId}, ${roomId}, ${context}`);
+function sendNotification(roomId, userId, receiver, context, usersInRoomName) {
     return new Promise((resolve, reject) => {
-        const notificationRequest = { roomId: roomId, userId: userId, message: context , roomName: usersInRoomName};
+        const notificationRequest = { roomId: roomId, userId: userId, receiver: receiver, message: context , roomName: usersInRoomName};
         client.SendNotification(notificationRequest, (err, response) => {
             if (err) {
-                console.error(`Error sending notification to ${userId}:`, err);
+                console.error(`Error sending notification to ${receiver}:`, err);
                 reject(err);
             } else {
-                console.log(`Notification sent to ${userId}:`, response);
+                console.log(`${userId} sent to ${receiver}:`, response);
                 resolve(response);
             }
         });
