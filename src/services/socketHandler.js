@@ -99,7 +99,7 @@ const socketHandler = (io, redis) => {
             const { roomId, context } = data;
             const topic = 'chat_messages'
             const userId = socket.data.userId;
-            console.log(userId);
+            console.log('✅ userId:', userId, typeof userId);
 
             // kafka 로 메시지 전송
             await sendMessageToKafka(topic, roomId, context, userId);
@@ -122,10 +122,10 @@ const socketHandler = (io, redis) => {
                 return;
             }
             await Promise.all(
-                offlineUsers.map(async (userId) => {
+                offlineUsers.map(async (receiver) => {
                     try{
-                        await sendNotification(roomId, userId, context, usersInRoomName);
-                        console.log(`💡 Notification sent to user ${userId} in room ${roomId}`);
+                        await sendNotification(roomId, userId, receiver, context, usersInRoomName);
+                        console.log(`💡 Notification sent to user ${receiver} in room ${roomId}`);
                     } catch (error) {
                         console.error("Error in socketHandler_sendMessage: ", error);
                     }
