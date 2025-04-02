@@ -89,6 +89,8 @@ const socketHandler = (io, redis) => {
                 await redis.del(`socket:${socketId}:rooms`);
                 console.log(`💡 socket:${socketId}:rooms deleted`);
             }
+            console.log(`💡 Sending userLeft event for user ${userId} in room ${roomId}`);
+            socket.to(roomId).emit('userLeft', { userId });
         });
 
         // 클라이언트에서 메시지 전송
